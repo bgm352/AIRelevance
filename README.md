@@ -1,4 +1,4 @@
-# Relevance Engineering Tool
+# AI Relevance Tool
 
 ## Overview
 
