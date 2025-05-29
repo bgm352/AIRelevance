@@ -67,17 +67,19 @@ def vectorize_and_score(query: str, passages: List[str], model):
     return list(zip(passages, scores))
 
 # --- Suggest improved passage ---
-def suggest_improved_passage(query: str, competitor_passage: str, your_passage: str, openai_key: str):
+def suggest_improved_passage(query: str, competitor_passage: str, your_passage: str, openai_key: str, demographics: str = ""):
     if not openai_key:
         return "OpenAI API key required for optimization."
     try:
         import openai
         prompt = (
             f"Query: {query}\n\n"
+            f"Target patient demographics: {demographics}\n\n"
             f"Competitor's top passage:\n{competitor_passage}\n\n"
             f"Your current passage:\n{your_passage}\n\n"
             "Rewrite your passage to be more relevant to the query and competitive with the top passage, "
-            "while maintaining your unique voice and accuracy."
+            "while maintaining your unique voice and accuracy. "
+            "Tailor the language and content to the specified patient demographics."
         )
         client = openai.OpenAI(api_key=openai_key)
         response = client.chat.completions.create(
@@ -107,6 +109,7 @@ def main():
 
     query = st.text_input("Enter your target query:")
     openai_key = st.text_input("OpenAI API Key (for optimization):", type="password", key="openai_key")
+    demographics = st.text_input("Patient demographics (e.g., 'adults with asthma, uninsured patients'):", key="demographics")
 
     uploaded_file = st.file_uploader(
         "Upload CSV with ranking URLs (columns: query, your_url, competitor_urls)",
@@ -121,7 +124,7 @@ def main():
         model = load_model()
 
         for idx, row in df.iterrows():
-            query = row['query']
+            query = row['query'] if 'query' in df.columns else query
             your_url = row['your_url']
             competitor_urls = row['competitor_urls'].split('|') if 'competitor_urls' in df.columns else []
 
@@ -154,9 +157,10 @@ def main():
             st.markdown(f"**Competitor's top passage (score {comp_top[1]:.2f}):**\n\n{comp_top[0]}")
 
             if st.button(f"Suggest Improved Passage for Query: {query}", key=f"improve_{idx}"):
-                improved = suggest_improved_passage(query, comp_top[0], your_top[0], openai_key)
+                improved = suggest_improved_passage(query, comp_top[0], your_top[0], openai_key, demographics)
                 st.markdown("**Improved Passage:**")
                 st.write(improved)
 
 if __name__ == "__main__":
     main()
+
